@@ -366,6 +366,7 @@ class Nested(Field):
         value will be returned as output instead of a dictionary.
         This parameter takes precedence over ``exclude``.
     :param bool many: Whether the field is a collection of objects.
+    :param bool tolerant: Whether to include unknown fields in the result.
     :param kwargs: The same keyword arguments that :class:`Field` receives.
     """
 
@@ -378,6 +379,7 @@ class Nested(Field):
         self.only = only
         self.exclude = exclude
         self.many = kwargs.get('many', False)
+        self.tolerant = kwargs.get('tolerant', False)
         self.__schema = None  # Cached Schema instance
         self.__updated_fields = False
         super(Nested, self).__init__(default=default, **kwargs)
@@ -469,7 +471,7 @@ class Nested(Field):
             else:
                 value = {self.only: value}
         try:
-            valid_data = self.schema.load(value)
+            valid_data = self.schema.load(value, tolerant=self.tolerant)
         except ValidationError as exc:
             raise ValidationError(exc.messages, data=data, valid_data=exc.valid_data)
         return valid_data

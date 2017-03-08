@@ -203,7 +203,7 @@ class Unmarshaller(ErrorStore):
                     errors.setdefault(field_name, []).append(text_type(err))
 
     def deserialize(self, data, fields_dict, many=False, partial=False,
-            dict_class=dict, index_errors=True, index=None):
+            tolerant=False, dict_class=dict, index_errors=True, index=None):
         """Deserialize ``data`` based on the schema defined by ``fields_dict``.
 
         :param dict data: The data to deserialize.
@@ -213,6 +213,7 @@ class Unmarshaller(ErrorStore):
         :param bool|tuple partial: Whether to ignore missing fields. If its
             value is an iterable, only missing fields listed in that iterable
             will be ignored.
+        :param bool tolerant: Whether to include unknown fields in the result.
         :param type dict_class: Dictionary class used to construct the output.
         :param bool index_errors: Whether to store the index of invalid items in
             ``self.errors`` when ``many=True``.
@@ -223,8 +224,9 @@ class Unmarshaller(ErrorStore):
         if many and data is not None:
             self._pending = True
             ret = [self.deserialize(d, fields_dict, many=False,
-                        partial=partial, dict_class=dict_class,
-                        index=idx, index_errors=index_errors)
+                        partial=partial, tolerant=tolerant,
+                        dict_class=dict_class, index=idx,
+                        index_errors=index_errors)
                     for idx, d in enumerate(data)]
 
             self._pending = False
@@ -275,6 +277,11 @@ class Unmarshaller(ErrorStore):
             if value is not missing:
                 key = fields_dict[attr_name].attribute or attr_name
                 set_value(ret, key, value)
+
+        if tolerant:
+            for key in set(data) - set(fields_dict):
+                set_value(ret, key, data[key])
+
         if self.errors and not self._pending:
             raise ValidationError(
                 self.errors,

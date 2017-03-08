@@ -1316,6 +1316,35 @@ class TestSchemaDeserialization:
         assert errors == {}
 
 
+    def test_tolerant_fields_deserialization(self):
+        class MySchema(Schema):
+            foo = fields.Integer()
+
+        data = MySchema().load({'foo': 3, 'bar': 5})
+        assert data['foo'] == 3
+        assert 'bar' not in data
+
+        data = MySchema(tolerant=True).load({'foo': 3, 'bar': 5}, tolerant=False)
+        assert data['foo'] == 3
+        assert 'bar' not in data
+
+        data = MySchema().load({'foo': 3, 'bar': 5}, tolerant=True)
+        assert data['foo'] == 3
+        assert data['bar']
+
+        data = MySchema(tolerant=True).load({'foo': 3, 'bar': 5})
+        assert data['foo'] == 3
+        assert data['bar']
+
+        with pytest.raises(ValidationError) as excinfo:
+            MySchema(tolerant=True).load({'foo': "asd", 'bar': 5})
+        assert 'foo' in str(excinfo)
+
+        schema = MySchema(tolerant=True, many=True)
+        data = schema.load([{'foo': 3, 'bar': 5}])
+        assert 'foo' in data[0]
+        assert 'bar' in data[0]
+
 validators_gen = (func for func in [lambda x: x <= 24, lambda x: 18 <= x])
 
 validators_gen_float = (func for func in
